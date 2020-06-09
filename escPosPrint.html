@@ -1,0 +1,55 @@
+<script src="@Url.Content("~/js/printerjs/qz-tray.js")"></script>
+<script src="@Url.Content("~/js/printerjs/rsvp-3.1.0.min.js")"></script>
+<script src="@Url.Content("~/js/printerjs/sha-256.min.js")"></script>
+<script>
+    $('#print').on('click', function () {
+        var products = @Html.Raw(Json.Serialize(Model.ProductViewModels));
+        var productsData = '';
+        for (let i = 0; i < products.length; i++) {
+            var product = products[i];
+            productsData += product.name + ' x ' + product.amount + '\x0A' + product.remark + '\x0A';
+        }
+        qz.websocket
+            .connect()
+            .then(function () {
+                return qz.printers.find('POS-58'); // Pass the printer name into the next Promise
+            })
+            .then(function (printer) {
+                var config = qz.configs.create(printer); // Create a default config for the found printer
+                var data = [
+                    '\x1B' + '\x40', // init
+                    '\x1B' + '\x61' + '\x31', // center align
+                    '\x1B' + '\x45' + '\x0D', // bold on
+                    'Order Number: @Model.OrderNumber' + '\x0A' + '\x0A',
+                    '\x1B' + '\x45' + '\x0A', // bold off
+                    productsData + '\x0A',
+                    'Delivery Time: @Model.DeliveryTime.ToString("dd/MM/yyyy HH:mm")' + '\x0A' + '\x0A',
+                    '\x1B' + '\x45' + '\x0D', // bold on
+                    'Remarks:' + '\x0A',
+                    '\x1B' + '\x45' + '\x0A', // bold off
+                    '@Model.Remarks' + '\x0A' + '\x0A',
+                    '\x1B' + '\x45' + '\x0D', // bold on
+                    'Address' + '\x0A',
+                    '\x1B' + '\x45' + '\x0A', // bold off
+                    '\x1B' + '\x61' + '\x30', // left align
+                    'Street: @Model.AddressViewModel.Street' + '\x0A',
+                    'Street Number: @Model.AddressViewModel.StreetNumber' + '\x0A',
+                    'Flat Number: @Model.AddressViewModel.FlatNumber' + '\x0A',
+                    'Phone Number: @Model.ClientViewModel.PhoneNumber' + '\x0A' +'\x0A',
+                    '\x1B' + '\x45' + '\x0D', // bold on
+                    '\x1B' + '\x61' + '\x31', // center align
+                    'Payment' + '\x0A',
+                    '\x1B' + '\x45' + '\x0A', // bold off
+                    '\x1B' + '\x61' + '\x30', // left align
+                    'Price: @Model.PaymentViewModel.Price' + '\x0A',
+                    'Delivery Cost: @Model.PaymentViewModel.DeliveryPrice' + '\x0A',
+                    'Payment Type: @Model.PaymentViewModel.PaymentType' + '\x0A',
+                ]; // ESC/POS
+                console.log(data);
+                return qz.print(config, data);
+            })
+            .catch(function (e) {
+                console.error(e);
+            });
+    });
+</script>
